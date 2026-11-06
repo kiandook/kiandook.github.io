@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سایت کیان</title>
+<meta name="description" content="به سایت کیان خوش آمدید. یک صفحه ساده و سرگرم‌کننده با کنترل با حرکت دست، تاس، جمله روز و بازی سریع.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;500;800;900&display=swap">
+<style>
+  /* Layout: one centered column over a soft star field; hero with the hand-control switch, then small play cards in a 2-col grid that stacks on phones. Single light look: warm white with soft orange. */
+  :root {
+    --bg: #fffaf6;
+    --ink: #33261d;
+    --mute: #86705f;
+    --orange: #f09556;
+    --orange-deep: #d9742a;
+    --orange-ink: #b45a1a;
+    --peach: #ffeadb;
+    --panel: rgba(255, 255, 255, 0.88);
+    --line: rgba(240, 149, 86, 0.38);
+    --font: "Vazirmatn", "Tahoma", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+    body {
+    margin: 0;
+    background: radial-gradient(900px 600px at 90% -10%, #ffe5d0 0%, transparent 60%), radial-gradient(700px 520px at 0% 100%, #fff0e3 0%, transparent 55%), var(--bg);
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.8;
+    padding-block: 32px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    min-height: 100vh;
+  }
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+  main { position: relative; z-index: 1; max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+  .hero { padding-block: 28px 8px; display: flex; flex-direction: column; gap: 10px; }
+  .hello { margin: 0; color: var(--orange-ink); font-weight: 500; font-size: 1.05rem; }
+  h1 { margin: 0; font-weight: 900; font-size: clamp(2.3rem, 9vw, 4.2rem); line-height: 1.3; text-wrap: balance; color: var(--ink); }
+  h1 em { font-style: normal; color: var(--orange-deep); }
+  .sub { margin: 0; max-width: 34em; color: var(--mute); font-weight: 300; font-size: 1.1rem; }
+  .clock { display: inline-flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-top: 6px; }
+  .clock .time { font-weight: 800; font-size: 1.5rem; font-variant-numeric: tabular-nums; color: var(--orange-deep); }
+  .clock .date { color: var(--mute); font-weight: 300; }
+
+  .handbox { margin-top: 10px; padding: 16px 18px; border-radius: 18px; background: var(--peach); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; max-width: 34em; }
+  .handbox h2 { margin: 0; font-size: 1.1rem; font-weight: 800; }
+  .handbox ul { margin: 0; padding-inline-start: 1.2em; color: var(--mute); font-size: 0.95rem; font-weight: 300; }
+  .handbox .status { margin: 0; min-height: 1.8em; font-weight: 500; font-size: 0.95rem; color: var(--orange-ink); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .card { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 6px 22px rgba(217, 116, 42, 0.07); }
+  .card.wide { grid-column: 1 / -1; }
+  .card h2 { margin: 0; font-size: 1.15rem; font-weight: 800; }
+  .card p.hint { margin: 0; color: var(--mute); font-size: 0.92rem; font-weight: 300; }
+
+  button {
+    font-family: inherit; font-size: 1rem; font-weight: 500; color: var(--ink); cursor: pointer;
+    background: #fff; border: 1.5px solid var(--orange); border-radius: 12px; padding: 10px 18px;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s; align-self: flex-start;
+  }
+  button:hover { background: var(--peach); box-shadow: 0 4px 14px rgba(217, 116, 42, 0.18); }
+  button:active { transform: scale(0.97); }
+  button:focus-visible { outline: 3px solid var(--orange-deep); outline-offset: 3px; }
+  button.primary { background: var(--orange); color: #2b1a0e; font-weight: 800; }
+  button.primary:hover { background: #f4a46d; }
+  button:disabled { opacity: 0.55; cursor: default; }
+
+  .dice-row { display: flex; gap: 14px; }
+  .die { width: 76px; height: 76px; border-radius: 16px; display: grid; place-items: center; font-size: 2.6rem; font-weight: 900; background: #fff; border: 1.5px solid var(--orange); color: var(--orange-deep); box-shadow: 0 4px 14px rgba(217, 116, 42, 0.15); font-variant-numeric: tabular-nums; }
+  .die.roll { animation: shake 0.45s; }
+  @keyframes shake { 0% { transform: rotate(0); } 25% { transform: rotate(-14deg) scale(1.08); } 50% { transform: rotate(12deg); } 75% { transform: rotate(-8deg); } 100% { transform: rotate(0); } }
+  .total { color: var(--mute); font-size: 0.95rem; }
+
+  .quote { margin: 0; min-height: 3.6em; font-size: 1.2rem; font-weight: 500; line-height: 1.9; text-wrap: balance; }
+
+  .arena { position: relative; height: 240px; border-radius: 14px; border: 1.5px dashed var(--line); overflow: hidden; background: #fff6ee; }
+  .target { position: absolute; width: 52px; height: 52px; border-radius: 50%; padding: 0; font-size: 1.6rem; line-height: 1; background: var(--orange); border-color: var(--orange-deep); color: #fff; box-shadow: 0 6px 16px rgba(217, 116, 42, 0.4); transition: left 0.12s, top 0.12s; }
+  .target[hidden] { display: none !important; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline; }
+  .stats b { font-size: 1.4rem; font-weight: 800; color: var(--orange-deep); font-variant-numeric: tabular-nums; }
+  .stats span { color: var(--mute); font-size: 0.92rem; }
+  .msg { min-height: 1.8em; margin: 0; font-weight: 500; }
+
+  .paint { display: block; width: 100%; height: 300px; border-radius: 14px; border: 1.5px dashed var(--line); background: #fff; touch-action: none; cursor: crosshair; }
+  .tools { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; }
+  .tools label { display: inline-flex; align-items: center; gap: 8px; color: var(--mute); font-size: 0.92rem; }
+  .tools input[type="range"] { width: 110px; accent-color: var(--orange-deep); }
+  button.sw { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--line); align-self: center; }
+  button.sw.on { box-shadow: 0 0 0 3px var(--ink); }
+
+  footer { text-align: center; color: var(--mute); font-size: 0.9rem; font-weight: 300; padding-top: 8px; }
+
+  /* hand cursor + camera preview */
+  #cursor { position: fixed; left: 0; top: 0; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; border: 3px solid var(--orange-deep); background: rgba(240, 149, 86, 0.25); pointer-events: none; z-index: 20; display: none; transition: width 0.08s, height 0.08s, margin 0.08s, background 0.08s; }
+  #cursor.on { display: block; }
+  #cursor.draw { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-width: 2px; background: var(--orange-deep); }
+  #cursor.pinch { width: 24px; height: 24px; margin: -12px 0 0 -12px; background: var(--orange-deep); }
+  #cam { position: fixed; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); width: 132px; height: 99px; object-fit: cover; border-radius: 12px; border: 2px solid var(--orange); transform: scaleX(-1); z-index: 15; background: #000; display: none; }
+  #cam.on { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .die.roll { animation: none; }
+    button, .target, #cursor { transition: none; }
+  }
+</style>
+
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div id="cursor" aria-hidden="true"></div>
+<video id="cam" playsinline muted aria-hidden="true"></video>
+
+<main>
+  <header class="hero">
+    <p class="hello" id="greet">سلام!</p>
+    <h1>به سایت <em>کیان</em> خوش اومدی</h1>
+    <p class="sub">اینجا خونه‌ی کیانه. یه گوشه‌ی ساده و بامزه که می‌تونی توش تاس بندازی، جمله‌ی روز بگیری و ببینی تو ۱۰ ثانیه چند تا ستاره می‌گیری. هرجای صفحه بزنی یا انگشتت رو بکشی، جرقه می‌زنه.</p>
+    <div class="clock">
+      <span class="time" id="time">--:--:--</span>
+      <span class="date" id="date"></span>
+    </div>
+
+    <div class="handbox">
+      <h2>کنترل با حرکت دست</h2>
+      <ul>
+        <li>دستت رو جلوی دوربین بگیر. نوک انگشت اشاره می‌شه نشانگر.</li>
+        <li>انگشت اشاره رو بالا بگیر و بقیه‌ی انگشت‌ها رو ببند تا روی بوم بکشی. دست باز یعنی فقط نشانگر.</li>
+        <li>شست و اشاره رو بچسبون و حرکت بده تا نقاشی جابه‌جا بشه. روی دکمه‌ها همین حرکت کلیک می‌کنه.</li>
+      </ul>
+      <p class="status" id="handStatus">دوربین فقط روی دستگاه خودت کار می‌کنه و هیچ تصویری جایی ارسال یا ذخیره نمی‌شه.</p>
+      <button id="handBtn" class="primary" type="button">روشن کردن حرکات دست</button>
+    </div>
+  </header>
+
+  <section class="grid">
+    <article class="card wide">
+      <h2>بوم نقاشی</h2>
+      <p class="hint">با انگشت یا موس روی بوم بکش. با حرکات دست: انگشت اشاره‌ی بالا می‌کشه و شست و اشاره‌ی چسبیده، نقاشی رو جابه‌جا می‌کنه.</p>
+      <canvas id="paint" class="paint" aria-label="بوم نقاشی"></canvas>
+      <div class="tools">
+        <button class="sw on" type="button" data-c="#d9742a" style="background:#d9742a" aria-label="نارنجی" aria-pressed="true"></button>
+        <button class="sw" type="button" data-c="#f4b183" style="background:#f4b183" aria-label="هلویی" aria-pressed="false"></button>
+        <button class="sw" type="button" data-c="#33261d" style="background:#33261d" aria-label="قهوه‌ای تیره" aria-pressed="false"></button>
+        <button class="sw" type="button" data-c="#3a9ea5" style="background:#3a9ea5" aria-label="فیروزه‌ای" aria-pressed="false"></button>
+        <button class="sw" type="button" data-c="#e07a8f" style="background:#e07a8f" aria-label="صورتی" aria-pressed="false"></button>
+        <label for="brush">قلم <input id="brush" type="range" min="2" max="24" value="6"></label>
+        <button id="undoBtn" type="button">برگردون</button>
+        <button id="clearBtn" type="button">پاک کن</button>
+      </div>
+    </article>
+
+    <article class="card">
+      <h2>تاس بنداز</h2>
+      <p class="hint">دو تا تاس، شانس خودت رو امتحان کن.</p>
+      <div class="dice-row">
+        <div class="die" id="d1">۴</div>
+        <div class="die" id="d2">۲</div>
+      </div>
+      <div class="total" id="total">مجموع: ۶</div>
+      <button id="rollBtn" type="button">بنداز</button>
+    </article>
+
+    <article class="card">
+      <h2>جمله‌ی روز</h2>
+      <p class="hint">هر بار که بزنی یه جمله‌ی جدید می‌گیری.</p>
+      <p class="quote" id="quote">قدم اول همیشه سخت‌ترینه، ولی مهم‌ترینه.</p>
+      <button id="quoteBtn" type="button">یکی دیگه</button>
+    </article>
+
+    <article class="card wide">
+      <h2>ستاره‌ها رو بگیر</h2>
+      <p class="hint">ده ثانیه وقت داری. هر ستاره‌ای که می‌گیری یک امتیاز داره.</p>
+      <div class="arena" id="arena">
+        <button class="target" id="target" type="button" aria-label="ستاره" hidden>★</button>
+      </div>
+      <div class="stats">
+        <div><b id="score">۰</b> <span>امتیاز</span></div>
+        <div><b id="left">۱۰</b> <span>ثانیه مانده</span></div>
+        <div><b id="best">۰</b> <span>بهترین رکورد</span></div>
+      </div>
+      <p class="msg" id="msg">آماده‌ای؟</p>
+      <button id="startBtn" type="button">شروع بازی</button>
+    </article>
+  </section>
+
+  <footer>ساخته‌شده برای کیان</footer>
+</main>
+
+<script>
+(function () {
+  var fa = function (n) { return Number(n).toLocaleString('fa-IR', { useGrouping: false }); };
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- greeting + clock (Tehran time) ---------- */
+  var greetEl = document.getElementById('greet');
+  var timeEl = document.getElementById('time');
+  var dateEl = document.getElementById('date');
+  var tf, df;
+  try {
+    tf = new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Tehran' });
+    df = new Intl.DateTimeFormat('fa-IR', { dateStyle: 'full', timeZone: 'Asia/Tehran' });
+  } catch (e) { tf = null; df = null; }
+  function tehranHour() {
+    try { return Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Tehran' }).format(new Date())) % 24; }
+    catch (e) { return new Date().getHours(); }
+  }
+  function tick() {
+    var now = new Date();
+    if (tf) { timeEl.textContent = tf.format(now); dateEl.textContent = df.format(now); }
+    else { timeEl.textContent = now.toLocaleTimeString('fa-IR'); dateEl.textContent = now.toLocaleDateString('fa-IR'); }
+    var h = tehranHour();
+    greetEl.textContent = h < 5 ? 'شب‌بخیر، شب‌زنده‌دار!' : h < 12 ? 'صبح بخیر!' : h < 17 ? 'ظهر بخیر!' : h < 20 ? 'عصر بخیر!' : 'شب بخیر!';
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* ---------- dice ---------- */
+  var d1 = document.getElementById('d1'), d2 = document.getElementById('d2'), totalEl = document.getElementById('total');
+  function rnd(n) { return 1 + Math.floor(Math.random() * n); }
+  document.getElementById('rollBtn').addEventListener('click', function () {
+    var count = 0;
+    [d1, d2].forEach(function (d) { d.classList.remove('roll'); void d.offsetWidth; d.classList.add('roll'); });
+    var iv = setInterval(function () {
+      d1.textContent = fa(rnd(6)); d2.textContent = fa(rnd(6));
+      if (++count >= 6) {
+        clearInterval(iv);
+        var a = rnd(6), b = rnd(6);
+        d1.textContent = fa(a); d2.textContent = fa(b);
+        totalEl.textContent = 'مجموع: ' + fa(a + b) + (a === b ? ' (جفت!)' : '');
+      }
+    }, 70);
+  });
+
+  /* ---------- quotes ---------- */
+  var quotes = [
+    'قدم اول همیشه سخت‌ترینه، ولی مهم‌ترینه.',
+    'هر روز یه ذره بهتر از دیروز، همین کافیه.',
+    'کار بزرگ از قدم‌های کوچیک شروع می‌شه.',
+    'اشتباه کردن یعنی داری تلاش می‌کنی.',
+    'امروز رو جدی بگیر، فردا خودش درست می‌شه.',
+    'صبر کن، ولی دست از کار نکش.',
+    'یاد گرفتن هیچ‌وقت دیر نیست.',
+    'اگه سوال داری بپرس، خجالت نداره.',
+    'یه لبخند هم کار حساب می‌شه.',
+    'مسیرت رو خودت می‌سازی، نگران سرعتش نباش.'
+  ];
+  var qEl = document.getElementById('quote'), last = 0;
+  document.getElementById('quoteBtn').addEventListener('click', function () {
+    var i; do { i = Math.floor(Math.random() * quotes.length); } while (i === last && quotes.length > 1);
+    last = i; qEl.textContent = quotes[i];
+  });
+
+  /* ---------- catch-the-stars game ---------- */
+  var arena = document.getElementById('arena'), target = document.getElementById('target');
+  var scoreEl = document.getElementById('score'), leftEl = document.getElementById('left'), bestEl = document.getElementById('best');
+  var msgEl = document.getElementById('msg'), startBtn = document.getElementById('startBtn');
+  var score = 0, left = 10, timer = null, mover = null, best = 0;
+  try { best = Number(localStorage.getItem('kian-best')) || 0; } catch (e) {}
+  bestEl.textContent = fa(best);
+  function place() {
+    var w = arena.clientWidth - 52, h = arena.clientHeight - 52;
+    target.style.left = Math.max(0, Math.random() * w) + 'px';
+    target.style.top = Math.max(0, Math.random() * h) + 'px';
+  }
+  function end() {
+    clearInterval(timer); clearInterval(mover); target.hidden = true;
+    startBtn.disabled = false; startBtn.textContent = 'دوباره';
+    if (score > best) {
+      best = score; bestEl.textContent = fa(best);
+      try { localStorage.setItem('kian-best', String(best)); } catch (e) {}
+      msgEl.textContent = 'رکورد جدید! ' + fa(score) + ' ستاره گرفتی.';
+    } else {
+      msgEl.textContent = 'تموم شد. ' + fa(score) + ' ستاره گرفتی.';
+    }
+  }
+  startBtn.addEventListener('click', function () {
+    score = 0; left = 10; scoreEl.textContent = fa(0); leftEl.textContent = fa(10);
+    msgEl.textContent = 'برو!'; startBtn.disabled = true; target.hidden = false; place();
+    timer = setInterval(function () { left--; leftEl.textContent = fa(left); if (left <= 0) end(); }, 1000);
+    mover = setInterval(place, 900);
+  });
+  target.addEventListener('click', function () {
+    score++; scoreEl.textContent = fa(score); place();
+    clearInterval(mover); mover = setInterval(place, 900);
+  });
+
+  /* ---------- star field, bursts, trails ---------- */
+  var cv = document.getElementById('sky'), ctx = cv.getContext('2d');
+  var W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2), stars = [], bursts = [];
+  var COLS = ['232,120,50', '245,170,110'];
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var n = Math.round(W * H / 11000);
+    stars = [];
+    for (var i = 0; i < n; i++) stars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.5 + 0.4, p: Math.random() * 6.28, s: Math.random() * 0.02 + 0.005 });
+  }
+  window.addEventListener('resize', resize); resize();
+  function spawn(x, y, n, speed) {
+    var col = COLS[Math.floor(Math.random() * COLS.length)];
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.28, v = Math.random() * speed + 0.6;
+      bursts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, col: col });
+    }
+    if (reduce) draw();
+  }
+  window.addEventListener('pointerdown', function (e) {
+    if (e.target.closest && e.target.closest('button')) return;
+    spawn(e.clientX, e.clientY, 18, 3);
+  });
+  var lastTrail = 0;
+  window.addEventListener('pointermove', function (e) {
+    if (reduce) return;
+    var t = Date.now(); if (t - lastTrail < 40) return; lastTrail = t;
+    spawn(e.clientX, e.clientY, 2, 1);
+  });
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i]; s.p += s.s;
+      ctx.globalAlpha = 0.18 + 0.4 * Math.abs(Math.sin(s.p));
+      ctx.fillStyle = '#ef9a5e';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill();
+    }
+    for (var j = bursts.length - 1; j >= 0; j--) {
+      var b = bursts[j]; b.x += b.vx; b.y += b.vy; b.vx *= 0.96; b.vy *= 0.96; b.life -= 0.025;
+      if (b.life <= 0) { bursts.splice(j, 1); continue; }
+      ctx.globalAlpha = b.life; ctx.fillStyle = 'rgb(' + b.col + ')';
+      ctx.beginPath(); ctx.arc(b.x, b.y, 2.6, 0, 6.28); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function loop() { draw(); requestAnimationFrame(loop); }
+  if (reduce) { draw(); } else { loop(); }
+
+  /* ---------- drawing canvas ---------- */
+  var pc = document.getElementById('paint'), pctx = pc.getContext('2d');
+  var strokes = [], cur = null, drawing = false, handDrawing = false, penColor = '#d9742a', penSize = 6;
+  function drawSeg(s, i) {
+    pctx.strokeStyle = s.c; pctx.fillStyle = s.c; pctx.lineWidth = s.w; pctx.lineCap = 'round'; pctx.lineJoin = 'round';
+    var p = s.p;
+    if (p.length === 1) { pctx.beginPath(); pctx.arc(p[0].x, p[0].y, s.w / 2, 0, 6.28); pctx.fill(); return; }
+    pctx.beginPath(); pctx.moveTo(p[i - 1].x, p[i - 1].y); pctx.lineTo(p[i].x, p[i].y); pctx.stroke();
+  }
+  function repaint() {
+    var r = pc.getBoundingClientRect();
+    pctx.clearRect(0, 0, r.width, r.height);
+    strokes.forEach(function (s) {
+      if (s.p.length === 1) drawSeg(s, 0);
+      else for (var i = 1; i < s.p.length; i++) drawSeg(s, i);
+    });
+  }
+  function sizePaint() {
+    var r = pc.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    pc.width = Math.round(r.width * d); pc.height = Math.round(r.height * d);
+    pctx.setTransform(d, 0, 0, d, 0, 0); repaint();
+  }
+  function startStroke(x, y) { cur = { c: penColor, w: penSize, p: [{ x: x, y: y }] }; strokes.push(cur); drawSeg(cur, 0); }
+  function addPoint(x, y) { if (!cur) return; cur.p.push({ x: x, y: y }); drawSeg(cur, cur.p.length - 1); }
+  function endStroke() { cur = null; }
+  function local(e) { var r = pc.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  pc.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); try { pc.setPointerCapture(e.pointerId); } catch (x) {}
+    drawing = true; var q = local(e); startStroke(q.x, q.y);
+  });
+  pc.addEventListener('pointermove', function (e) { if (!drawing) return; var q = local(e); addPoint(q.x, q.y); });
+  function up() { drawing = false; endStroke(); }
+  pc.addEventListener('pointerup', up); pc.addEventListener('pointercancel', up);
+  document.querySelectorAll('.sw').forEach(function (b) {
+    b.addEventListener('click', function () {
+      penColor = b.getAttribute('data-c');
+      document.querySelectorAll('.sw').forEach(function (o) { o.classList.remove('on'); o.setAttribute('aria-pressed', 'false'); });
+      b.classList.add('on'); b.setAttribute('aria-pressed', 'true');
+    });
+  });
+  document.getElementById('brush').addEventListener('input', function (e) { penSize = Number(e.target.value); });
+  document.getElementById('undoBtn').addEventListener('click', function () { strokes.pop(); repaint(); });
+  document.getElementById('clearBtn').addEventListener('click', function () { strokes = []; repaint(); });
+  window.addEventListener('resize', sizePaint); sizePaint();
+
+  /* ---------- hand control (camera + MediaPipe Hands) ---------- */
+  var handBtn = document.getElementById('handBtn'), handStatus = document.getElementById('handStatus');
+  var cam = document.getElementById('cam'), cursor = document.getElementById('cursor');
+  var hands = null, stream = null, running = false, pinched = false, cx = -100, cy = -100, seen = false;
+  var MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/';
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = src; s.crossOrigin = 'anonymous';
+      s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  var mode = 'hover', lastX = 0, lastY = 0, pointCount = 0, missCount = 0;
+  function setMode(m, text) {
+    var changed = mode !== m; mode = m;
+    if (changed && text) handStatus.textContent = text;
+  }
+  function ext(lm, tip, pip) { return dist(lm[tip], lm[0]) > dist(lm[pip], lm[0]) * 1.12; }
+  function fold(lm, tip, pip) { return dist(lm[tip], lm[0]) < dist(lm[pip], lm[0]) * 1.05; }
+  function onHand(r) {
+    var lms = r.multiHandLandmarks;
+    if (!lms || !lms.length) {
+      cursor.classList.remove('on', 'pinch', 'draw'); pinched = false; pointCount = 0; missCount = 0;
+      if (mode === 'draw') endStroke();
+      setMode('hover'); return;
+    }
+    var lm = lms[0];
+    if (!seen) { seen = true; handStatus.textContent = 'دستت دیده شد. انگشت اشاره رو بالا بگیر تا بکشی.'; }
+    var tx = (1 - clamp01((lm[8].x - 0.12) / 0.76)) * W;
+    var ty = clamp01((lm[8].y - 0.1) / 0.7) * H;
+    cx += (tx - cx) * 0.55; cy += (ty - cy) * 0.55;
+    cursor.style.left = cx + 'px'; cursor.style.top = cy + 'px';
+    cursor.classList.add('on');
+    var ratio = dist(lm[4], lm[8]) / (dist(lm[0], lm[9]) || 1);
+    var pinchNow = pinched ? ratio < 0.45 : ratio < 0.3;
+    var rect = pc.getBoundingClientRect();
+    var over = cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
+    var pose = ext(lm, 8, 6) && fold(lm, 12, 10) && fold(lm, 16, 14);
+    if (pinchNow) {
+      pointCount = 0; missCount = 0;
+      if (!pinched) {
+        if (mode === 'draw') endStroke();
+        var el = document.elementFromPoint(cx, cy);
+        var btn = el && el.closest ? el.closest('button') : null;
+        if (btn && !btn.disabled) { btn.click(); setMode('click'); }
+        else if (over) { setMode('pan', 'در حال جابه‌جا کردن نقاشی...'); lastX = cx; lastY = cy; }
+        else { spawn(cx, cy, 18, 3); setMode('click'); }
+      } else if (mode === 'pan') {
+        var dx = cx - lastX, dy = cy - lastY; lastX = cx; lastY = cy;
+        if (dx || dy) {
+          strokes.forEach(function (st) { st.p.forEach(function (q) { q.x += dx; q.y += dy; }); });
+          repaint();
+        }
+      }
+    } else {
+      if (mode === 'pan' || mode === 'click') setMode('hover', 'آماده‌ست. انگشت اشاره رو بالا بگیر تا بکشی.');
+      if (pose) { pointCount++; missCount = 0; } else { missCount++; pointCount = 0; }
+      if (pose && over && (pointCount >= 2 || mode === 'draw')) {
+        if (mode !== 'draw') { setMode('draw', 'در حال کشیدن...'); startStroke(cx - rect.left, cy - rect.top); }
+        else addPoint(cx - rect.left, cy - rect.top);
+      } else if (mode === 'draw' && (missCount >= 3 || !over)) {
+        endStroke(); setMode('hover', 'آماده‌ست. انگشت اشاره رو بالا بگیر تا بکشی.');
+      } else if (mode !== 'draw' && !reduce) { spawn(cx, cy, 1, 0.8); }
+    }
+    pinched = pinchNow;
+    cursor.classList.toggle('pinch', pinchNow);
+    cursor.classList.toggle('draw', mode === 'draw');
+  }
+  function stopHand() {
+    running = false; seen = false; pinched = false; if (mode === 'draw') endStroke(); mode = 'hover'; pointCount = 0; missCount = 0;
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    cam.classList.remove('on'); cursor.classList.remove('on', 'pinch', 'draw');
+    handBtn.textContent = 'روشن کردن حرکات دست';
+    handStatus.textContent = 'حرکات دست خاموش شد.';
+  }
+  async function frame() {
+    if (!running) return;
+    if (cam.readyState >= 2 && hands) { try { await hands.send({ image: cam }); } catch (e) {} }
+    requestAnimationFrame(frame);
+  }
+  handBtn.addEventListener('click', async function () {
+    if (running) { stopHand(); return; }
+    handBtn.disabled = true; handStatus.textContent = 'در حال روشن کردن دوربین...';
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nocam');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+    } catch (e) {
+      handBtn.disabled = false;
+      handStatus.textContent = 'دسترسی به دوربین ممکن نشد. اجازه‌ی دوربین رو بده و دوباره امتحان کن. تا اون موقع با موس یا انگشت هم جرقه می‌زنه.';
+      return;
+    }
+    try {
+      cam.srcObject = stream; await cam.play(); cam.classList.add('on');
+      handStatus.textContent = 'در حال آماده‌سازی تشخیص دست، چند ثانیه صبر کن...';
+      if (!window.Hands) await loadScript(MP + 'hands.js');
+      hands = new window.Hands({ locateFile: function (f) { return MP + f; } });
+      hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+      hands.onResults(onHand);
+      running = true; handBtn.disabled = false; handBtn.textContent = 'خاموش کردن حرکات دست';
+      handStatus.textContent = 'آماده‌ست. دستت رو جلوی دوربین بگیر.';
+      frame();
+    } catch (e) {
+      stopHand(); handBtn.disabled = false;
+      handStatus.textContent = 'تشخیص دست بالا نیومد. اینترنتت رو چک کن و دوباره امتحان کن.';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
