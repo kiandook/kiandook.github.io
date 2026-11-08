@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>سیاره‌ی کیان</title>
+<meta name="description" content="سیاره‌ی نارنجی کیان. با دست یا انگشت بچرخونش، جابه‌جاش کن و بزرگ و کوچیکش کن.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;500;800;900&display=swap">
+<style>
+  /* Layout: full-screen WebGL stage with a slim header on top and one compact control panel at the bottom. Single warm light look to match the main page. */
+  :root {
+    --bg1: #fff7ef;
+    --bg2: #ffdfc6;
+    --ink: #33261d;
+    --mute: #86705f;
+    --orange: #f09556;
+    --orange-deep: #d9742a;
+    --orange-ink: #b45a1a;
+    --peach: #ffeadb;
+    --panel: rgba(255, 255, 255, 0.9);
+    --line: rgba(240, 149, 86, 0.4);
+    --font: "Vazirmatn", "Tahoma", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(circle at 50% 38%, var(--bg1) 0%, var(--bg2) 100%);
+    background-color: var(--bg1);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow: hidden;
+  }
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #stage:active { cursor: grabbing; }
+
+  .top { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+  .top > * { pointer-events: auto; }
+  h1 { margin: 0; font-size: clamp(1.3rem, 5vw, 1.9rem); font-weight: 900; color: var(--ink); }
+  h1 em { font-style: normal; color: var(--orange-deep); }
+
+  .btn, button {
+    font-family: inherit; font-size: 1rem; font-weight: 500; color: var(--ink); cursor: pointer; text-decoration: none;
+    background: #fff; border: 1.5px solid var(--orange); border-radius: 12px; padding: 8px 16px;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s; display: inline-block;
+  }
+  .btn:hover, button:hover { background: var(--peach); box-shadow: 0 4px 14px rgba(217, 116, 42, 0.18); }
+  button:active { transform: scale(0.97); }
+  .btn:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--orange-deep); outline-offset: 3px; }
+  button.primary { background: var(--orange); color: #2b1a0e; font-weight: 800; }
+  button.primary:hover { background: #f4a46d; }
+  button:disabled { opacity: 0.55; cursor: default; }
+
+  .panel {
+    position: fixed; z-index: 5; left: 0; right: 0; margin-inline: auto; width: calc(100% - 24px); max-width: 560px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 28px rgba(217, 116, 42, 0.14);
+  }
+  .status { margin: 0; min-height: 3.4em; font-size: 0.92rem; font-weight: 500; color: var(--orange-ink); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  details { color: var(--mute); font-size: 0.9rem; font-weight: 300; }
+  summary { cursor: pointer; font-weight: 500; color: var(--ink); }
+  details ul { margin: 6px 0 0; padding-inline-start: 1.2em; }
+
+  #cursor { position: fixed; left: 0; top: 0; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; border: 3px solid var(--orange-deep); background: rgba(240, 149, 86, 0.25); pointer-events: none; z-index: 20; display: none; }
+  #cursor.on { display: block; }
+  #cursor.pinch { width: 24px; height: 24px; margin: -12px 0 0 -12px; background: var(--orange-deep); }
+  #cursor.spin { border-style: dashed; }
+  #cam { position: fixed; top: calc(64px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); width: 120px; height: 90px; object-fit: cover; border-radius: 12px; border: 2px solid var(--orange); transform: scaleX(-1); z-index: 15; background: #000; display: none; }
+  #cam.on { display: block; }
+</style>
+</head>
+<body>
+
+<canvas id="stage" aria-label="سیاره‌ی سه‌بعدی"></canvas>
+<div id="cursor" aria-hidden="true"></div>
+<video id="cam" playsinline muted aria-hidden="true"></video>
+
+<header class="top">
+  <h1>سیاره‌ی <em>کیان</em></h1>
+  <a class="btn" href="./">برگشت به سایت</a>
+</header>
+
+<section class="panel">
+  <p class="status" id="status">با موس یا انگشت روی صفحه بکش تا سیاره بچرخه. با چرخ موس یا دو انگشت، بزرگ و کوچیکش کن.</p>
+  <div class="row">
+    <button id="bigger" type="button">بزرگ‌تر</button>
+    <button id="smaller" type="button">کوچیک‌تر</button>
+    <button id="reset" type="button">برگردون وسط</button>
+    <button id="handBtn" class="primary" type="button">روشن کردن حرکات دست</button>
+  </div>
+  <details>
+    <summary>راهنمای حرکات دست</summary>
+    <ul>
+      <li>شست و اشاره رو بچسبون و دستت رو حرکت بده تا سیاره جابه‌جا بشه.</li>
+      <li>همون‌طور که چسبیده‌ای، دستت رو به دوربین نزدیک کن تا بزرگ بشه و دور کن تا کوچیک بشه.</li>
+      <li>فقط انگشت اشاره رو بالا بگیر و حرکت بده تا سیاره بچرخه.</li>
+      <li>چسبوندن شست و اشاره روی دکمه‌ها، کلیک می‌کنه.</li>
+    </ul>
+  </details>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var statusEl = document.getElementById('status');
+  var HINT = 'شست و اشاره‌ی چسبیده: جابه‌جا و بزرگ/کوچیک (دستت رو نزدیک و دور کن). انگشت اشاره: چرخوندن.';
+  function setStatus(t) { statusEl.textContent = t; }
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  if (typeof THREE === 'undefined') { setStatus('کتابخونه‌ی سه‌بعدی بالا نیومد. اینترنتت رو چک کن (اگه لازمه VPN رو روشن کن) و صفحه رو دوباره باز کن.'); return; }
+  var canvas = document.getElementById('stage'), renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true }); }
+  catch (e) { setStatus('این مرورگر نتونست صحنه‌ی سه‌بعدی رو بسازه (WebGL). با Chrome امتحان کن.'); return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  /* ---------- textures ---------- */
+  function planetTexture() {
+    var w = 1024, h = 512, c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d'), img = g.createImageData(w, h), d = img.data;
+    var pal = [[255, 241, 227], [255, 214, 178], [246, 166, 107], [217, 116, 42], [255, 232, 210]];
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var t = y / h, a = 2 * Math.PI * x / w;
+        var wob = 0.018 * Math.sin(3 * a + y * 0.045) + 0.012 * Math.sin(5 * a - y * 0.09);
+        var u = t + wob;
+        var v = 0.5 + 0.5 * Math.sin(u * 46 + 1.8 * Math.sin(u * 15));
+        var f = v * (pal.length - 1), i0 = Math.floor(f), i1 = Math.min(pal.length - 1, i0 + 1), k = f - i0, p = (y * w + x) * 4;
+        for (var j = 0; j < 3; j++) d[p + j] = pal[i0][j] * (1 - k) + pal[i1][j] * k;
+        d[p + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    var gr = g.createRadialGradient(720, 330, 4, 720, 330, 70);
+    gr.addColorStop(0, 'rgba(196,92,28,0.95)'); gr.addColorStop(1, 'rgba(196,92,28,0)');
+    g.save(); g.translate(720, 330); g.scale(1.7, 1); g.translate(-720, -330);
+    g.fillStyle = gr; g.beginPath(); g.arc(720, 330, 70, 0, 6.2832); g.fill(); g.restore();
+    var tex = new THREE.CanvasTexture(c); tex.anisotropy = 4; return tex;
+  }
+  function ringTexture() {
+    var c = document.createElement('canvas'); c.width = 512; c.height = 8;
+    var g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 512, 0);
+    gr.addColorStop(0, 'rgba(255,238,220,0)');
+    gr.addColorStop(0.08, 'rgba(255,238,220,0.85)');
+    gr.addColorStop(0.3, 'rgba(250,190,140,0.85)');
+    gr.addColorStop(0.42, 'rgba(255,245,235,0.4)');
+    gr.addColorStop(0.5, 'rgba(255,245,235,0)');
+    gr.addColorStop(0.56, 'rgba(255,240,226,0.9)');
+    gr.addColorStop(0.8, 'rgba(244,160,100,0.85)');
+    gr.addColorStop(0.95, 'rgba(255,232,210,0.6)');
+    gr.addColorStop(1, 'rgba(255,232,210,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 512, 8);
+    return new THREE.CanvasTexture(c);
+  }
+
+  /* ---------- scene ---------- */
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xfff1e4, 0.85));
+  var sun = new THREE.DirectionalLight(0xffffff, 0.95); sun.position.set(-4, 3, 6); scene.add(sun);
+
+  var rig = new THREE.Group(), body = new THREE.Group();
+  scene.add(rig); rig.add(body);
+  var sphere = new THREE.Mesh(new THREE.SphereGeometry(1.6, 64, 48), new THREE.MeshStandardMaterial({ map: planetTexture(), roughness: 0.9, metalness: 0 }));
+  body.add(sphere);
+  var rg = new THREE.RingGeometry(2.1, 3.5, 128, 1), pos = rg.attributes.position, uv = rg.attributes.uv, v3 = new THREE.Vector3();
+  for (var i = 0; i < pos.count; i++) { v3.fromBufferAttribute(pos, i); uv.setXY(i, (v3.length() - 2.1) / (3.5 - 2.1), 0.5); }
+  var ring = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ map: ringTexture(), side: THREE.DoubleSide, transparent: true, depthWrite: false }));
+  ring.rotation.x = Math.PI / 2; body.add(ring);
+  body.rotation.x = 0.45;
+
+  var moonPivot = new THREE.Group(); rig.add(moonPivot); moonPivot.rotation.z = 0.28;
+  var moon = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 24), new THREE.MeshStandardMaterial({ color: 0xfff1e3, roughness: 0.95 }));
+  moon.position.set(4.3, 0, 0); moonPivot.add(moon);
+
+  var sp = [], n = 170;
+  for (var s = 0; s < n; s++) {
+    var r = 14 + Math.random() * 18, th = Math.random() * 6.2832, ph = Math.acos(2 * Math.random() - 1);
+    sp.push(r * Math.sin(ph) * Math.cos(th), r * Math.sin(ph) * Math.sin(th), r * Math.cos(ph) - 6);
+  }
+  var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+  var stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xe8955a, size: 0.09, transparent: true, opacity: 0.55 }));
+  scene.add(stars);
+
+  /* ---------- sizing + pose ---------- */
+  var camZ = 7, upp = 0.01, visH = 5, visW = 5;
+  var home = { x: 0, y: 0.3 }, tgt = { x: 0, y: 0.3, s: 1 }, vel = { x: 0, y: 0 }, moved = false;
+  function resize() {
+    var w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camZ = Math.max(7, 11 / camera.aspect);
+    camera.position.set(0, 0, camZ); camera.updateProjectionMatrix();
+    visH = 2 * Math.tan(20 * Math.PI / 180) * camZ; visW = visH * camera.aspect; upp = visH / h;
+    home.y = visH * 0.09;
+    if (!moved) { tgt.x = home.x; tgt.y = home.y; }
+  }
+  window.addEventListener('resize', resize); resize();
+  rig.position.set(tgt.x, tgt.y, 0);
+
+  function clampPos() { tgt.x = clamp(tgt.x, -visW * 0.45, visW * 0.45); tgt.y = clamp(tgt.y, -visH * 0.45, visH * 0.45); }
+  function zoomBy(f) { tgt.s = clamp(tgt.s * f, 0.35, 2.6); }
+  function spinBy(dx, dy) {
+    body.rotation.y += dx * 0.008; body.rotation.x = clamp(body.rotation.x + dy * 0.008, -1.3, 1.3);
+    vel.y = dx * 0.005; vel.x = dy * 0.005;
+  }
+  function resetPose() { moved = false; tgt.x = home.x; tgt.y = home.y; tgt.s = 1; vel.x = 0; vel.y = 0; body.rotation.x = 0.45; }
+
+  function frame() {
+    requestAnimationFrame(frame);
+    rig.position.x += (tgt.x - rig.position.x) * 0.18;
+    rig.position.y += (tgt.y - rig.position.y) * 0.18;
+    rig.scale.setScalar(rig.scale.x + (tgt.s - rig.scale.x) * 0.18);
+    body.rotation.y += vel.y + (reduce ? 0 : 0.003);
+    body.rotation.x = clamp(body.rotation.x + vel.x, -1.3, 1.3);
+    vel.x *= 0.94; vel.y *= 0.94;
+    if (!reduce) { moonPivot.rotation.y += 0.012; stars.rotation.y += 0.0004; }
+    renderer.render(scene, camera);
+  }
+  frame();
+
+  /* ---------- mouse / touch ---------- */
+  var ptrs = new Map(), lastD = 0;
+  function pdist() { var a = Array.from(ptrs.values()); return a.length < 2 ? 0 : Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
+  canvas.addEventListener('pointerdown', function (e) {
+    try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) lastD = pdist();
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    var p = ptrs.get(e.pointerId); if (!p) return;
+    var dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    if (ptrs.size === 1) spinBy(dx, dy);
+    else if (ptrs.size === 2) { var d = pdist(); if (lastD && d) zoomBy(d / lastD); lastD = d; }
+  });
+  function upPtr(e) { ptrs.delete(e.pointerId); lastD = 0; }
+  canvas.addEventListener('pointerup', upPtr); canvas.addEventListener('pointercancel', upPtr);
+  canvas.addEventListener('wheel', function (e) { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.08 : 0.93); }, { passive: false });
+  document.getElementById('bigger').addEventListener('click', function () { zoomBy(1.2); });
+  document.getElementById('smaller').addEventListener('click', function () { zoomBy(1 / 1.2); });
+  document.getElementById('reset').addEventListener('click', resetPose);
+
+  /* ---------- hand control (camera + MediaPipe Hands) ---------- */
+  var handBtn = document.getElementById('handBtn'), cam = document.getElementById('cam'), cursor = document.getElementById('cursor');
+  var hands = null, stream = null, running = false, pinched = false, seen = false, mode = 'idle';
+  var cx = -100, cy = -100, gx = 0, gy = 0, gSize = 1, gScale = 1, lx = 0, ly = 0;
+  var MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/';
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = src; s.crossOrigin = 'anonymous'; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function ext(lm, tip, pip) { return dist(lm[tip], lm[0]) > dist(lm[pip], lm[0]) * 1.12; }
+  function fold(lm, tip, pip) { return dist(lm[tip], lm[0]) < dist(lm[pip], lm[0]) * 1.05; }
+  function curled(lm, tip, mcp) { return dist(lm[tip], lm[0]) < dist(lm[mcp], lm[0]) * 1.15; }
+  function onHand(r) {
+    var lms = r.multiHandLandmarks;
+    if (!lms || !lms.length) {
+      cursor.classList.remove('on', 'pinch', 'spin'); pinched = false;
+      if (mode !== 'idle') { mode = 'idle'; setStatus(HINT); }
+      return;
+    }
+    var lm = lms[0], W = window.innerWidth, H = window.innerHeight;
+    if (!seen) { seen = true; setStatus(HINT); }
+    var tx = (1 - clamp((lm[8].x - 0.12) / 0.76, 0, 1)) * W, ty = clamp((lm[8].y - 0.1) / 0.7, 0, 1) * H;
+    cx += (tx - cx) * 0.55; cy += (ty - cy) * 0.55;
+    cursor.style.left = cx + 'px'; cursor.style.top = cy + 'px'; cursor.classList.add('on');
+    var fist = curled(lm, 8, 5) && curled(lm, 12, 9) && curled(lm, 16, 13) && curled(lm, 20, 17);
+    var ratio = dist(lm[4], lm[8]) / (dist(lm[0], lm[9]) || 1);
+    var pinchNow = !fist && (pinched ? ratio < 0.45 : ratio < 0.3);
+    var point = ext(lm, 8, 6) && fold(lm, 12, 10) && fold(lm, 16, 14);
+    var size = dist(lm[0], lm[9]) || 0.1;
+    if (pinchNow) {
+      if (!pinched) {
+        var el = document.elementFromPoint(cx, cy), btn = el && el.closest ? el.closest('button, a, summary') : null;
+        if (btn) { btn.click(); mode = 'click'; }
+        else { mode = 'grab'; gx = cx; gy = cy; gSize = size; gScale = tgt.s; moved = true; setStatus('سیاره رو گرفتی. حرکت بده یا دستت رو نزدیک و دور کن.'); }
+      } else if (mode === 'grab') {
+        tgt.x += (cx - gx) * upp; tgt.y -= (cy - gy) * upp; gx = cx; gy = cy;
+        tgt.s = clamp(gScale * Math.pow(size / gSize, 1.8), 0.35, 2.6);
+        clampPos();
+      }
+    } else if (point) {
+      if (mode !== 'spin') { mode = 'spin'; lx = cx; ly = cy; setStatus('در حال چرخوندن سیاره...'); }
+      else { var dx = cx - lx, dy = cy - ly; lx = cx; ly = cy; spinBy(dx, dy); }
+    } else if (mode !== 'idle') { mode = 'idle'; setStatus(HINT); }
+    pinched = pinchNow;
+    cursor.classList.toggle('pinch', pinchNow);
+    cursor.classList.toggle('spin', mode === 'spin');
+  }
+  function stopHand() {
+    running = false; seen = false; pinched = false; mode = 'idle';
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    cam.classList.remove('on'); cursor.classList.remove('on', 'pinch', 'spin');
+    handBtn.textContent = 'روشن کردن حرکات دست';
+  }
+  async function loop() {
+    if (!running) return;
+    if (cam.readyState >= 2 && hands) { try { await hands.send({ image: cam }); } catch (e) {} }
+    requestAnimationFrame(loop);
+  }
+  handBtn.addEventListener('click', async function () {
+    if (running) { stopHand(); setStatus('حرکات دست خاموش شد. هنوز با موس یا انگشت می‌تونی سیاره رو بچرخونی.'); return; }
+    handBtn.disabled = true; setStatus('در حال روشن کردن دوربین...');
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nocam');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+    } catch (e) {
+      handBtn.disabled = false;
+      setStatus('دسترسی به دوربین ممکن نشد. اجازه‌ی دوربین رو بده و دوباره امتحان کن. تا اون موقع با موس یا انگشت هم کار می‌کنه.');
+      return;
+    }
+    try {
+      cam.srcObject = stream; await cam.play(); cam.classList.add('on');
+      setStatus('در حال آماده‌سازی تشخیص دست، چند ثانیه صبر کن...');
+      if (!window.Hands) await loadScript(MP + 'hands.js');
+      hands = new window.Hands({ locateFile: function (f) { return MP + f; } });
+      hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+      hands.onResults(onHand);
+      running = true; handBtn.disabled = false; handBtn.textContent = 'خاموش کردن حرکات دست';
+      setStatus('آماده‌ست. دستت رو جلوی دوربین بگیر.');
+      loop();
+    } catch (e) {
+      stopHand(); handBtn.disabled = false;
+      setStatus('تشخیص دست بالا نیومد. اینترنتت رو چک کن (اگه لازمه VPN رو روشن کن) و دوباره امتحان کن.');
+    }
+  });
+})();
+</script>
+</body>
+</html>
