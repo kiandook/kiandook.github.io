@@ -112,6 +112,10 @@
   #cursor.draw { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-width: 2px; background: var(--orange-deep); }
   #cursor.erase { width: 56px; height: 56px; margin: -28px 0 0 -28px; border-color: #e07a8f; background: rgba(224, 122, 143, 0.22); }
   #cursor.scroll { border-style: dashed; }
+  #cursor, #cursor.on { display: none !important; }
+  #skel { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 22; }
+  button.tog[aria-pressed="true"] { background: var(--orange); border-color: var(--orange-deep); font-weight: 800; }
+  .paint.move { cursor: move; }
   a.btn { display: inline-block; text-decoration: none; font-family: inherit; font-size: 1rem; font-weight: 800; color: #2b1a0e; background: var(--orange); border: 1.5px solid var(--orange); border-radius: 12px; padding: 10px 18px; align-self: flex-start; transition: background 0.15s, box-shadow 0.15s; }
   a.btn:hover { background: #f4a46d; box-shadow: 0 4px 14px rgba(217, 116, 42, 0.18); }
   a.btn:focus-visible { outline: 3px solid var(--orange-deep); outline-offset: 3px; }
@@ -129,6 +133,7 @@
 <body>
 <canvas id="sky" aria-hidden="true"></canvas>
 <div id="cursor" aria-hidden="true"></div>
+<canvas id="skel" aria-hidden="true"></canvas>
 <video id="cam" playsinline muted aria-hidden="true"></video>
 
 <main>
@@ -146,7 +151,7 @@
       <ul>
         <li>دستت رو جلوی دوربین بگیر. نوک انگشت اشاره می‌شه نشانگر.</li>
         <li>فقط انگشت اشاره بالا: روی بوم می‌کشه.</li>
-        <li>شست و اشاره‌ی چسبیده: نقاشی رو جابه‌جا می‌کنه و روی دکمه‌ها کلیک می‌کنه.</li>
+        <li>شست و اشاره‌ی چسبیده: نزدیک‌ترین خط نقاشی رو می‌گیره و جابه‌جا می‌کنه، و روی دکمه‌ها کلیک می‌کنه.</li>
         <li>دو انگشت (اشاره و میانی) بالا و پایین: صفحه اسکرول می‌شه.</li>
         <li>مشت روی بوم: خط‌هایی که بهشون می‌خوره پاک می‌شن.</li>
         <li>توی بازی ستاره‌ها، فقط نوک انگشتت رو ببر روی ستاره.</li>
@@ -159,9 +164,11 @@
   <section class="grid">
     <article class="card wide">
       <h2>بوم نقاشی</h2>
-      <p class="hint">با انگشت یا موس روی بوم بکش. با حرکات دست: انگشت اشاره‌ی بالا می‌کشه و شست و اشاره‌ی چسبیده، نقاشی رو جابه‌جا می‌کنه.</p>
+      <p class="hint">با انگشت یا موس روی بوم بکش. برای جابه‌جا کردن، دکمه‌ی «جابه‌جا کن» رو بزن و هر خط رو جدا بگیر و ببر. با حرکات دست: اشاره‌ی بالا می‌کشه و شست و اشاره‌ی چسبیده، همون خطی که بهش نزدیکی رو می‌گیره.</p>
       <canvas id="paint" class="paint" aria-label="بوم نقاشی"></canvas>
       <div class="tools">
+        <button id="modeDraw" class="tog" type="button" aria-pressed="true">بکش</button>
+        <button id="modeMove" class="tog" type="button" aria-pressed="false">جابه‌جا کن</button>
         <button class="sw on" type="button" data-c="#d9742a" style="background:#d9742a" aria-label="نارنجی" aria-pressed="true"></button>
         <button class="sw" type="button" data-c="#f4b183" style="background:#f4b183" aria-label="هلویی" aria-pressed="false"></button>
         <button class="sw" type="button" data-c="#33261d" style="background:#33261d" aria-label="قهوه‌ای تیره" aria-pressed="false"></button>
@@ -221,6 +228,12 @@
       <h2>سیاره‌ی کیان</h2>
       <p class="hint">یه سیاره‌ی نارنجی با حلقه و ماه. با دستت جابه‌جاش می‌کنی، می‌چرخونیش و بزرگ و کوچیکش می‌کنی. این بخش یه صفحه‌ی جداست.</p>
       <a class="btn" href="planet.html">برو به سیاره</a>
+    </article>
+
+    <article class="card wide">
+      <h2>هولوگرام کیان</h2>
+      <p class="hint">چند تا پنل شناور (ساعت، دستیار، یادداشت و ...) که با دستت می‌گیری و هرجا خواستی می‌بری. این هم یه صفحه‌ی جداست.</p>
+      <a class="btn" href="holo.html">برو به هولوگرام</a>
     </article>
   </section>
 
@@ -423,14 +436,33 @@
     if (p.length === 1) { pctx.beginPath(); pctx.arc(p[0].x, p[0].y, s.w / 2, 0, 6.28); pctx.fill(); return; }
     pctx.beginPath(); pctx.moveTo(p[i - 1].x, p[i - 1].y); pctx.lineTo(p[i].x, p[i].y); pctx.stroke();
   }
+  var selected = null;
   function repaint() {
     var r = pc.getBoundingClientRect();
     pctx.clearRect(0, 0, r.width, r.height);
     strokes.forEach(function (s) {
+      if (s === selected) {
+        var hl = { c: 'rgba(240,149,86,0.35)', w: s.w + 10, p: s.p };
+        if (hl.p.length === 1) drawSeg(hl, 0); else for (var k = 1; k < hl.p.length; k++) drawSeg(hl, k);
+      }
       if (s.p.length === 1) drawSeg(s, 0);
       else for (var i = 1; i < s.p.length; i++) drawSeg(s, i);
     });
   }
+  function segDist(x, y, a, b) {
+    var dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l)) : 0;
+    return Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy));
+  }
+  function strokeDist(st, x, y) {
+    var p = st.p; if (p.length === 1) return Math.hypot(p[0].x - x, p[0].y - y);
+    var m = 1e9; for (var j = 1; j < p.length; j++) m = Math.min(m, segDist(x, y, p[j - 1], p[j])); return m;
+  }
+  function hitStroke(x, y) {
+    var best = null, bd = 1e9;
+    for (var i = strokes.length - 1; i >= 0; i--) { var d = strokeDist(strokes[i], x, y) - strokes[i].w / 2; if (d < bd) { bd = d; best = strokes[i]; } }
+    return bd <= 26 ? best : null;
+  }
+  function shiftStroke(st, dx, dy) { st.p.forEach(function (q) { q.x += dx; q.y += dy; }); }
   function sizePaint() {
     var r = pc.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
     pc.width = Math.round(r.width * d); pc.height = Math.round(r.height * d);
@@ -440,12 +472,19 @@
   function addPoint(x, y) { if (!cur) return; cur.p.push({ x: x, y: y }); drawSeg(cur, cur.p.length - 1); }
   function endStroke() { cur = null; }
   function local(e) { var r = pc.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  var moveMode = false, dragStroke = null, dragLast = null;
   pc.addEventListener('pointerdown', function (e) {
     e.preventDefault(); try { pc.setPointerCapture(e.pointerId); } catch (x) {}
-    drawing = true; var q = local(e); startStroke(q.x, q.y);
+    var q = local(e);
+    if (moveMode) { dragStroke = hitStroke(q.x, q.y); dragLast = q; selected = dragStroke; repaint(); return; }
+    drawing = true; startStroke(q.x, q.y);
   });
-  pc.addEventListener('pointermove', function (e) { if (!drawing) return; var q = local(e); addPoint(q.x, q.y); });
-  function up() { drawing = false; endStroke(); }
+  pc.addEventListener('pointermove', function (e) {
+    var q = local(e);
+    if (moveMode) { if (dragStroke) { shiftStroke(dragStroke, q.x - dragLast.x, q.y - dragLast.y); dragLast = q; repaint(); } return; }
+    if (!drawing) return; addPoint(q.x, q.y);
+  });
+  function up() { drawing = false; endStroke(); if (dragStroke) { dragStroke = null; selected = null; repaint(); } }
   pc.addEventListener('pointerup', up); pc.addEventListener('pointercancel', up);
   document.querySelectorAll('.sw').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -457,7 +496,45 @@
   document.getElementById('brush').addEventListener('input', function (e) { penSize = Number(e.target.value); });
   document.getElementById('undoBtn').addEventListener('click', function () { strokes.pop(); repaint(); });
   document.getElementById('clearBtn').addEventListener('click', function () { strokes = []; repaint(); });
+  var modeDraw = document.getElementById('modeDraw'), modeMove = document.getElementById('modeMove');
+  function setMoveMode(on) { moveMode = on; modeDraw.setAttribute('aria-pressed', String(!on)); modeMove.setAttribute('aria-pressed', String(on)); pc.classList.toggle('move', on); }
+  modeDraw.addEventListener('click', function () { setMoveMode(false); });
+  modeMove.addEventListener('click', function () { setMoveMode(true); });
   window.addEventListener('resize', sizePaint); sizePaint();
+
+  /* ---------- hand skeleton overlay ---------- */
+  var skel = document.getElementById('skel'), sctx = skel.getContext('2d'), SW = 0, SH = 0;
+  var SK = { halo: 'rgba(255,255,255,0.92)', glow: 'rgba(0,0,0,0)', blur: 0, bone: '#d9742a', joint: '#ffffff', pill: 'rgba(255,255,255,0.95)', text: '#33261d' };
+  var BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  function sizeSkel() { var d = Math.min(window.devicePixelRatio || 1, 2); SW = window.innerWidth; SH = window.innerHeight; skel.width = SW * d; skel.height = SH * d; sctx.setTransform(d, 0, 0, d, 0, 0); }
+  window.addEventListener('resize', sizeSkel); sizeSkel();
+  function clearSkel() { sctx.clearRect(0, 0, SW, SH); }
+  function drawSkel(lm, ax, ay, label, pinch, ring) {
+    clearSkel();
+    var vw = cam.videoWidth || 640, vh = cam.videoHeight || 480, k = Math.min(SW, SH) * 0.9 / Math.min(vw, vh);
+    var pts = lm.map(function (q) { return { x: ax - (q.x - lm[8].x) * vw * k, y: ay + (q.y - lm[8].y) * vh * k }; });
+    sctx.lineCap = 'round'; sctx.lineJoin = 'round';
+    function bones() { sctx.beginPath(); BONES.forEach(function (b) { sctx.moveTo(pts[b[0]].x, pts[b[0]].y); sctx.lineTo(pts[b[1]].x, pts[b[1]].y); }); sctx.stroke(); }
+    sctx.shadowColor = SK.glow; sctx.shadowBlur = SK.blur;
+    sctx.strokeStyle = SK.halo; sctx.lineWidth = 8; bones();
+    sctx.shadowBlur = 0;
+    sctx.strokeStyle = SK.bone; sctx.lineWidth = 3; bones();
+    for (var i = 0; i < 21; i++) {
+      var tip = (i === 4 || i === 8 || i === 12 || i === 16 || i === 20), hot = pinch && (i === 4 || i === 8);
+      sctx.beginPath(); sctx.arc(pts[i].x, pts[i].y, hot ? 9 : tip ? 6 : 4, 0, 6.2832);
+      sctx.fillStyle = hot ? SK.bone : SK.joint; sctx.fill(); sctx.lineWidth = 2; sctx.strokeStyle = SK.bone; sctx.stroke();
+    }
+    if (ring) { sctx.beginPath(); sctx.setLineDash([6, 5]); sctx.arc(ax, ay, ring, 0, 6.2832); sctx.strokeStyle = SK.bone; sctx.lineWidth = 2; sctx.stroke(); sctx.setLineDash([]); }
+    if (label) {
+      sctx.font = '700 14px Vazirmatn, Tahoma, sans-serif'; sctx.direction = 'rtl'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+      var tw = sctx.measureText(label).width + 22, lx = pts[0].x, ly = Math.min(pts[0].y + 28, SH - 20);
+      lx = Math.max(tw / 2 + 4, Math.min(SW - tw / 2 - 4, lx));
+      sctx.fillStyle = SK.pill; sctx.strokeStyle = SK.bone; sctx.lineWidth = 1.5;
+      sctx.beginPath(); if (sctx.roundRect) sctx.roundRect(lx - tw / 2, ly - 13, tw, 26, 13); else sctx.rect(lx - tw / 2, ly - 13, tw, 26); sctx.fill(); sctx.stroke();
+      sctx.fillStyle = SK.text; sctx.fillText(label, lx, ly + 1);
+    }
+  }
+  var LABELS = { hover: 'نشانگر', draw: 'کشیدن', pan: 'جابه‌جایی', scroll: 'اسکرول', erase: 'پاک‌کن', click: 'کلیک' };
 
   /* ---------- hand control (camera + MediaPipe Hands) ---------- */
   var handBtn = document.getElementById('handBtn'), handStatus = document.getElementById('handStatus');
@@ -491,6 +568,7 @@
     if (!lms || !lms.length) {
       cursor.classList.remove('on', 'pinch', 'draw', 'erase', 'scroll'); pinched = false; pointCount = 0; missCount = 0;
       if (mode === 'draw') endStroke();
+      clearSkel(); if (mode === 'pan') { selected = null; repaint(); }
       setMode('hover'); return;
     }
     var lm = lms[0];
@@ -521,16 +599,18 @@
         var el = document.elementFromPoint(cx, cy);
         var btn = el && el.closest ? el.closest('button, a.btn') : null;
         if (btn && !btn.disabled) { btn.click(); setMode('click'); }
-        else if (over) { setMode('pan', 'در حال جابه‌جا کردن نقاشی...'); lastX = cx; lastY = cy; }
-        else { spawn(cx, cy, 18, 3); setMode('click'); }
-      } else if (mode === 'pan') {
-        var dx = cx - lastX, dy = cy - lastY; lastX = cx; lastY = cy;
-        if (dx || dy) {
-          strokes.forEach(function (st) { st.p.forEach(function (q) { q.x += dx; q.y += dy; }); });
-          repaint();
+        else if (over) {
+          selected = hitStroke(cx - rect.left, cy - rect.top);
+          if (selected) { setMode('pan', 'این خط رو گرفتی. حرکت بده.'); lastX = cx; lastY = cy; repaint(); }
+          else setMode('click');
         }
+        else { spawn(cx, cy, 18, 3); setMode('click'); }
+      } else if (mode === 'pan' && selected) {
+        var dx = cx - lastX, dy = cy - lastY; lastX = cx; lastY = cy;
+        if (dx || dy) { shiftStroke(selected, dx, dy); repaint(); }
       }
     } else {
+      if (mode === 'pan') { selected = null; repaint(); }
       if (mode === 'pan' || mode === 'click' || (mode === 'erase' && action !== 'erase') || (mode === 'scroll' && action !== 'scroll')) setMode('hover', HINT);
       if (action === 'erase') {
         pointCount = 0; missCount = 0;
@@ -560,11 +640,12 @@
     cursor.classList.toggle('draw', mode === 'draw');
     cursor.classList.toggle('erase', mode === 'erase');
     cursor.classList.toggle('scroll', mode === 'scroll');
+    drawSkel(lm, cx, cy, LABELS[mode] || 'نشانگر', pinchNow, mode === 'erase' ? 30 : 0);
   }
   function stopHand() {
     running = false; seen = false; pinched = false; if (mode === 'draw') endStroke(); mode = 'hover'; pointCount = 0; missCount = 0;
     if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-    cam.classList.remove('on'); cursor.classList.remove('on', 'pinch', 'draw', 'erase', 'scroll');
+    cam.classList.remove('on'); cursor.classList.remove('on', 'pinch', 'draw', 'erase', 'scroll'); clearSkel(); if (selected) { selected = null; repaint(); }
     handBtn.textContent = 'روشن کردن حرکات دست';
     handStatus.textContent = 'حرکات دست خاموش شد.';
   }

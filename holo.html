@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>هولوگرام کیان</title>
+<meta name="description" content="پنل‌های شناور هولوگرامی کیان. با موس، انگشت یا حرکت دست بگیر و هرجا خواستی ببر.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;500;800;900&display=swap">
+<style>
+  /* Layout: a dark warm stage with a faint grid; four glass panels float on it and are packed into columns at start. A slim dock at the bottom holds status and controls. One committed dark-orange look. */
+  :root {
+    --bg: #130b06;
+    --ink: #ffe9d6;
+    --mute: #c9a287;
+    --glow: #ffa24d;
+    --glow-soft: rgba(255, 162, 77, 0.28);
+    --edge: rgba(255, 170, 90, 0.6);
+    --glass: rgba(42, 22, 10, 0.62);
+    --font: "Vazirmatn", "Tahoma", "Segoe UI", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background:
+      radial-gradient(900px 600px at 50% 40%, rgba(255, 150, 60, 0.14), transparent 70%),
+      linear-gradient(rgba(255, 162, 77, 0.06) 1px, transparent 1px) 0 0 / 44px 44px,
+      linear-gradient(90deg, rgba(255, 162, 77, 0.06) 1px, transparent 1px) 0 0 / 44px 44px,
+      var(--bg);
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.7;
+    overflow: hidden;
+  }
+  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 40; background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px); }
+
+  .top { position: fixed; top: 0; left: 0; right: 0; z-index: 30; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+  h1 { margin: 0; font-size: clamp(1.2rem, 4.5vw, 1.7rem); font-weight: 900; letter-spacing: 0; }
+  h1 em { font-style: normal; color: var(--glow); text-shadow: 0 0 16px var(--glow-soft); }
+
+  #stage { position: fixed; inset: 0; overflow: hidden; }
+  .holo {
+    position: absolute; left: 0; top: 0; width: min(var(--w, 280px), calc(100vw - 24px)); transform-origin: 50% 50%;
+    background: var(--glass); border: 1px solid var(--edge); border-radius: 14px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 22px rgba(255, 150, 60, 0.22), inset 0 0 22px rgba(255, 150, 60, 0.08);
+    will-change: transform; transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .holo::before, .holo::after { content: ""; position: absolute; width: 14px; height: 14px; border: 2px solid var(--glow); pointer-events: none; }
+  .holo::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+  .holo::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+  .holo.hot { border-color: var(--glow); box-shadow: 0 0 30px rgba(255, 150, 60, 0.45), inset 0 0 22px rgba(255, 150, 60, 0.14); }
+  .holo.held { border-color: #ffd29c; box-shadow: 0 0 44px rgba(255, 170, 90, 0.7), inset 0 0 26px rgba(255, 150, 60, 0.2); }
+
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--edge); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .held .bar { cursor: grabbing; }
+  .ttl { font-size: 0.8rem; font-weight: 800; letter-spacing: 0; color: var(--glow); }
+  .ctl { display: inline-flex; gap: 6px; }
+  .content { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  button, .btn, input, textarea { font-family: inherit; font-size: 0.95rem; color: var(--ink); }
+  button, .btn { cursor: pointer; text-decoration: none; display: inline-block; background: rgba(255, 150, 60, 0.12); border: 1px solid var(--edge); border-radius: 10px; padding: 7px 14px; transition: background 0.15s, box-shadow 0.15s; }
+  button:hover, .btn:hover { background: rgba(255, 150, 60, 0.26); box-shadow: 0 0 14px var(--glow-soft); }
+  button:focus-visible, .btn:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+  button.mini { width: 26px; height: 26px; padding: 0; line-height: 1; border-radius: 8px; font-size: 1rem; }
+  button.go { background: var(--glow); color: #2a1304; font-weight: 800; border-color: var(--glow); }
+  button.go:hover { background: #ffb875; }
+  button:disabled { opacity: 0.55; cursor: default; }
+
+  .big { font-size: 2.2rem; font-weight: 900; line-height: 1.2; color: var(--ink); text-shadow: 0 0 18px var(--glow-soft); font-variant-numeric: tabular-nums; }
+  .sm { color: var(--mute); font-size: 0.88rem; font-weight: 300; }
+
+  .reactor { display: flex; justify-content: center; }
+  .reactor svg { width: 130px; height: 130px; overflow: visible; }
+  .spin1 { transform-origin: 60px 60px; animation: spin 14s linear infinite; }
+  .spin2 { transform-origin: 60px 60px; animation: spin 9s linear infinite reverse; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .meter { display: grid; grid-template-columns: 56px 1fr 34px; gap: 8px; align-items: center; font-size: 0.82rem; color: var(--mute); }
+  .track { height: 6px; border-radius: 3px; background: rgba(255, 150, 60, 0.18); overflow: hidden; }
+  .fill { height: 100%; width: 50%; background: linear-gradient(90deg, #ff8a3c, #ffd29c); box-shadow: 0 0 8px var(--glow-soft); transition: width 0.8s; }
+  .meter b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; text-align: left; }
+
+  .log { height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px; border: 1px dashed var(--edge); background: rgba(0, 0, 0, 0.25); }
+  .msg { max-width: 92%; padding: 5px 10px; border-radius: 10px; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 0.9rem; }
+  .msg.me { align-self: flex-start; background: rgba(255, 162, 77, 0.88); color: #2a1304; }
+  .msg.ai { align-self: flex-end; background: rgba(255, 150, 60, 0.12); border: 1px solid var(--edge); }
+  .ask { display: flex; gap: 6px; }
+  .ask input { flex: 1; min-width: 0; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--edge); border-radius: 10px; padding: 7px 10px; }
+  textarea { width: 100%; height: 110px; resize: none; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--edge); border-radius: 10px; padding: 8px 10px; line-height: 1.8; }
+  ::placeholder { color: var(--mute); opacity: 0.8; }
+
+  .dock {
+    position: fixed; z-index: 30; left: 0; right: 0; margin-inline: auto; width: calc(100% - 24px); max-width: 600px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--glass); border: 1px solid var(--edge); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 0 26px rgba(255, 150, 60, 0.2);
+  }
+  .status { margin: 0; min-height: 3.1em; font-size: 0.86rem; color: var(--glow); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  #cursor { position: fixed; left: 0; top: 0; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; border: 2px solid var(--glow); background: rgba(255, 162, 77, 0.2); box-shadow: 0 0 16px var(--glow-soft); pointer-events: none; z-index: 60; display: none; }
+  #cursor.on { display: block; }
+  #cursor, #cursor.on { display: none !important; }
+  #skel { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 62; }
+  #cursor.pinch { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: var(--glow); }
+  #cam { position: fixed; top: calc(52px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: 112px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--glow); transform: scaleX(-1); z-index: 35; background: #000; display: none; opacity: 0.9; }
+  #cam.on { display: block; }
+
+  @media (max-width: 700px) {
+    .log { height: 96px; }
+    textarea { height: 62px; }
+    .reactor svg { width: 90px; height: 90px; }
+    .big { font-size: 1.8rem; }
+    .content { padding: 10px; gap: 6px; }
+    .status { height: 2.8em; min-height: 0; overflow: hidden; font-size: 0.8rem; }
+    .reactor + .meter + .meter + .meter + .sm { display: none; }
+    button, .btn { padding: 6px 11px; font-size: 0.88rem; }
+    button.mini { padding: 0; }
+    .dock { padding: 8px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spin1, .spin2 { animation: none; }
+    .holo, .fill, button { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor" aria-hidden="true"></div>
+<canvas id="skel" aria-hidden="true"></canvas>
+<video id="cam" playsinline muted aria-hidden="true"></video>
+
+<header class="top"><h1>هولوگرام <em>کیان</em></h1></header>
+
+<main id="stage">
+  <section class="holo" id="p-clock" style="--w:270px">
+    <div class="bar"><span class="ttl">زمان</span><span class="ctl"><button class="mini" type="button" data-act="down" aria-label="کوچیک‌تر">−</button><button class="mini" type="button" data-act="up" aria-label="بزرگ‌تر">+</button></span></div>
+    <div class="content">
+      <div class="sm" id="greet">سلام کیان</div>
+      <div class="big" id="time">--:--:--</div>
+      <div class="sm" id="date"></div>
+    </div>
+  </section>
+
+  <section class="holo" id="p-reactor" style="--w:270px">
+    <div class="bar"><span class="ttl">هسته</span><span class="ctl"><button class="mini" type="button" data-act="down" aria-label="کوچیک‌تر">−</button><button class="mini" type="button" data-act="up" aria-label="بزرگ‌تر">+</button></span></div>
+    <div class="content">
+      <div class="reactor">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="54" fill="none" stroke="#ffa24d" stroke-width="1" opacity="0.5"/>
+          <g class="spin1"><circle cx="60" cy="60" r="46" fill="none" stroke="#ffa24d" stroke-width="3" stroke-dasharray="14 8 3 8"/></g>
+          <g class="spin2"><circle cx="60" cy="60" r="34" fill="none" stroke="#ffd29c" stroke-width="2" stroke-dasharray="4 6"/></g>
+          <circle cx="60" cy="60" r="22" fill="rgba(255,162,77,0.16)" stroke="#ffa24d" stroke-width="2"/>
+          <circle cx="60" cy="60" r="9" fill="#ffd29c"/>
+        </svg>
+      </div>
+      <div class="meter"><span>انرژی</span><div class="track"><div class="fill" id="m1"></div></div><b id="v1">۰</b></div>
+      <div class="meter"><span>سیگنال</span><div class="track"><div class="fill" id="m2"></div></div><b id="v2">۰</b></div>
+      <div class="meter"><span>حافظه</span><div class="track"><div class="fill" id="m3"></div></div><b id="v3">۰</b></div>
+      <div class="sm">اعداد نمایشی هستن و فقط برای دیدن‌اند.</div>
+    </div>
+  </section>
+
+  <section class="holo" id="p-ai" style="--w:320px">
+    <div class="bar"><span class="ttl">دستیار</span><span class="ctl"><button class="mini" type="button" data-act="down" aria-label="کوچیک‌تر">−</button><button class="mini" type="button" data-act="up" aria-label="بزرگ‌تر">+</button></span></div>
+    <div class="content">
+      <div class="log" id="log" aria-live="polite"><div class="msg ai">سلام کیان! بپرس ساعت چنده، بگو تاس بنداز، یه جمله بخوام، یا هر چیز دیگه.</div></div>
+      <form class="ask" id="askForm">
+        <input id="askIn" type="text" placeholder="بنویس..." autocomplete="off" aria-label="سوالت">
+        <button class="go" id="askBtn" type="submit">بفرست</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="holo" id="p-note" style="--w:270px">
+    <div class="bar"><span class="ttl">یادداشت</span><span class="ctl"><button class="mini" type="button" data-act="down" aria-label="کوچیک‌تر">−</button><button class="mini" type="button" data-act="up" aria-label="بزرگ‌تر">+</button></span></div>
+    <div class="content">
+      <textarea id="note" placeholder="هر چی خواستی اینجا بنویس. روی همین دستگاه ذخیره می‌شه." aria-label="یادداشت"></textarea>
+    </div>
+  </section>
+</main>
+
+<nav class="dock">
+  <p class="status" id="status">نوار بالای هر پنل رو بگیر و ببر.</p>
+  <div class="row">
+    <button id="handBtn" class="go" type="button">روشن کردن حرکات دست</button>
+    <button id="tidyBtn" type="button">چیدن پنل‌ها</button>
+    <button id="soundBtn" type="button" aria-pressed="true">صدا: روشن</button>
+    <a class="btn" href="./">برگشت به سایت</a>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var fa = function (n) { return Number(n).toLocaleString('fa-IR', { useGrouping: false }); };
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var statusEl = document.getElementById('status');
+  var HINT = 'شست و اشاره رو روی پنل بچسبون و ببر. دستت رو نزدیک و دور کن تا بزرگ و کوچیک بشه.';
+  function setStatus(t) { statusEl.textContent = t; }
+
+  /* ---------- sound ---------- */
+  var soundOn = true, ac = null, soundBtn = document.getElementById('soundBtn');
+  function blip(freq) {
+    if (!soundOn) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+      var o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+      o.type = 'sine'; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * 1.5, t + 0.12);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.18);
+    } catch (e) {}
+  }
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn; soundBtn.textContent = 'صدا: ' + (soundOn ? 'روشن' : 'خاموش'); soundBtn.setAttribute('aria-pressed', String(soundOn)); blip(520);
+  });
+
+  /* ---------- panels ---------- */
+  var stage = document.getElementById('stage');
+  var panels = [].slice.call(document.querySelectorAll('.holo')).map(function (el, i) {
+    return { el: el, x: 0, y: 0, s: 1, tx: 0, ty: 0, vx: 0, vy: 0, ivx: 0, ivy: 0, z: i + 1 };
+  });
+  var zTop = panels.length + 1, userMoved = false, drag = null;
+  function panelOf(el) { for (var i = 0; i < panels.length; i++) if (panels[i].el === el) return panels[i]; return null; }
+  function layout() {
+    var W = window.innerWidth, H = window.innerHeight, narrow = W < 700, topPad = 52, bottomPad = narrow ? 162 : 150, gap = 12;
+    var hs = panels.map(function (p) { return p.el.offsetHeight; });
+    var total = hs.reduce(function (a, b) { return a + b; }, 0) + gap * (panels.length - 1);
+    var s0 = narrow ? clamp((H - topPad - bottomPad) / total, 0.68, 1) : 1;
+    var x = 14, y = topPad, colW = 0;
+    panels.forEach(function (p, i) {
+      var w = p.el.offsetWidth, hh = hs[i], vw = w * s0, vh = hh * s0, left;
+      p.s = s0; p.vx = p.vy = p.ivx = p.ivy = 0; p.tx = p.ty = 0;
+      if (narrow) { left = Math.max(8, (W - vw) / 2); y = Math.max(y, topPad); }
+      else {
+        if (y + vh > H - bottomPad && y > topPad) { x += colW + gap; y = topPad; colW = 0; }
+        left = Math.min(x, Math.max(8, W - vw - 8));
+      }
+      p.x = left - w * (1 - s0) / 2; p.y = y - hh * (1 - s0) / 2;
+      y += vh + gap; colW = Math.max(colW, vw);
+    });
+  }
+  function clampPanel(p) {
+    var W = window.innerWidth, H = window.innerHeight, w = p.el.offsetWidth;
+    p.x = clamp(p.x, -w * 0.5, W - w * 0.5); p.y = clamp(p.y, 46, H - 70);
+  }
+  function apply(p) {
+    p.el.style.transform = 'translate(' + p.x.toFixed(1) + 'px,' + p.y.toFixed(1) + 'px) scale(' + p.s.toFixed(3) + ') perspective(800px) rotateX(' + p.tx.toFixed(2) + 'deg) rotateY(' + p.ty.toFixed(2) + 'deg)';
+  }
+  function grab(p, px, py, kind) {
+    drag = { p: p, kind: kind, lx: px, ly: py }; p.z = ++zTop; p.el.style.zIndex = p.z; p.el.classList.add('held'); p.ivx = p.ivy = 0; userMoved = true; blip(620);
+  }
+  function moveDrag(px, py) {
+    if (!drag) return;
+    var dx = px - drag.lx, dy = py - drag.ly; drag.lx = px; drag.ly = py;
+    drag.p.x += dx; drag.p.y += dy; drag.p.vx = dx; drag.p.vy = dy; clampPanel(drag.p);
+  }
+  function release() {
+    if (!drag) return;
+    var p = drag.p; p.ivx = reduce ? 0 : p.vx * 0.9; p.ivy = reduce ? 0 : p.vy * 0.9; p.el.classList.remove('held'); drag = null; blip(420);
+  }
+  function frame() {
+    requestAnimationFrame(frame);
+    panels.forEach(function (p) {
+      var held = drag && drag.p === p;
+      if (!held && (Math.abs(p.ivx) > 0.2 || Math.abs(p.ivy) > 0.2)) { p.x += p.ivx; p.y += p.ivy; p.ivx *= 0.92; p.ivy *= 0.92; clampPanel(p); }
+      var gy = held ? clamp(p.vx * 0.9, -16, 16) : 0, gx = held ? clamp(-p.vy * 0.9, -16, 16) : 0;
+      p.ty += (gy - p.ty) * 0.2; p.tx += (gx - p.tx) * 0.2; p.vx *= 0.7; p.vy *= 0.7;
+      apply(p);
+    });
+  }
+  panels.forEach(function (p) {
+    var bar = p.el.querySelector('.bar');
+    bar.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.mini')) return;
+      e.preventDefault(); try { bar.setPointerCapture(e.pointerId); } catch (x) {}
+      grab(p, e.clientX, e.clientY, 'ptr');
+    });
+    bar.addEventListener('pointermove', function (e) { if (drag && drag.kind === 'ptr' && drag.p === p) moveDrag(e.clientX, e.clientY); });
+    function up() { if (drag && drag.kind === 'ptr' && drag.p === p) release(); }
+    bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
+    bar.addEventListener('wheel', function (e) { e.preventDefault(); p.s = clamp(p.s * (e.deltaY < 0 ? 1.06 : 0.94), 0.6, 1.8); }, { passive: false });
+    p.el.addEventListener('pointerdown', function () { p.z = ++zTop; p.el.style.zIndex = p.z; });
+    p.el.addEventListener('click', function (e) {
+      var b = e.target.closest('.mini'); if (!b) return;
+      p.s = clamp(p.s * (b.getAttribute('data-act') === 'up' ? 1.15 : 1 / 1.15), 0.6, 1.8); blip(500);
+    });
+  });
+  document.getElementById('tidyBtn').addEventListener('click', function () { userMoved = false; layout(); blip(480); });
+  window.addEventListener('resize', function () { if (!userMoved) layout(); else panels.forEach(clampPanel); });
+  layout(); frame();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (!userMoved) layout(); });
+  setTimeout(function () { if (!userMoved) layout(); }, 400);
+
+  /* ---------- clock ---------- */
+  var tEl = document.getElementById('time'), dEl = document.getElementById('date'), gEl = document.getElementById('greet');
+  var tf = null, df = null, hf = null;
+  try {
+    tf = new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Tehran' });
+    df = new Intl.DateTimeFormat('fa-IR', { dateStyle: 'full', timeZone: 'Asia/Tehran' });
+    hf = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Tehran' });
+  } catch (e) {}
+  function nowTime() { return tf ? tf.format(new Date()) : new Date().toLocaleTimeString('fa-IR'); }
+  function nowDate() { return df ? df.format(new Date()) : new Date().toLocaleDateString('fa-IR'); }
+  function tick() {
+    tEl.textContent = nowTime(); dEl.textContent = nowDate();
+    var h = hf ? Number(hf.format(new Date())) % 24 : new Date().getHours();
+    gEl.textContent = h < 5 ? 'شب‌بخیر کیان' : h < 12 ? 'صبح بخیر کیان' : h < 17 ? 'ظهر بخیر کیان' : h < 20 ? 'عصر بخیر کیان' : 'شب بخیر کیان';
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* ---------- decorative meters ---------- */
+  var base = [78, 64, 41];
+  function meters() {
+    for (var i = 1; i <= 3; i++) {
+      var v = clamp(Math.round(base[i - 1] + (Math.random() * 24 - 12)), 8, 99);
+      document.getElementById('m' + i).style.width = v + '%'; document.getElementById('v' + i).textContent = fa(v) + '٪';
+    }
+  }
+  meters(); setInterval(meters, 1600);
+
+  /* ---------- notes ---------- */
+  var note = document.getElementById('note'), nt = null;
+  try { note.value = localStorage.getItem('kian-holo-note') || ''; } catch (e) {}
+  note.addEventListener('input', function () {
+    clearTimeout(nt); nt = setTimeout(function () { try { localStorage.setItem('kian-holo-note', note.value); } catch (e) {} }, 400);
+  });
+
+  /* ---------- assistant ---------- */
+  var logEl = document.getElementById('log'), askForm = document.getElementById('askForm'), askIn = document.getElementById('askIn'), askBtn = document.getElementById('askBtn');
+  var hist = [], busy = false;
+  var SYS = 'تو دستیار دوستانه‌ی سایت شخصی کیان هستی. فارسی و خودمونی جواب بده، کوتاه و مفید باشی (حداکثر چند جمله).';
+  var quotes = ['قدم اول همیشه سخت‌ترینه، ولی مهم‌ترینه.', 'هر روز یه ذره بهتر از دیروز، همین کافیه.', 'کار بزرگ از قدم‌های کوچیک شروع می‌شه.', 'اشتباه کردن یعنی داری تلاش می‌کنی.', 'یاد گرفتن هیچ‌وقت دیر نیست.', 'مسیرت رو خودت می‌سازی، نگران سرعتش نباش.'];
+  function rnd(n) { return 1 + Math.floor(Math.random() * n); }
+  function addMsg(text, cls) {
+    var d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text; logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight; return d;
+  }
+  function localAnswer(q) {
+    if (/ساعت|زمان/.test(q)) return 'ساعت الان ' + nowTime() + ' است.';
+    if (/تاریخ|امروز/.test(q)) return 'امروز ' + nowDate() + ' است.';
+    if (/تاس/.test(q)) { var a = rnd(6), b = rnd(6); return 'تاس انداختم: ' + fa(a) + ' و ' + fa(b) + ' (مجموع ' + fa(a + b) + ')'; }
+    if (/جمله|انگیزه/.test(q)) return quotes[Math.floor(Math.random() * quotes.length)];
+    return null;
+  }
+  async function askAI(q) {
+    var turns = hist.slice(-6).map(function (m) { return (m.r === 'u' ? 'کاربر: ' : 'دستیار: ') + m.t; }).join('\n');
+    var full = SYS + '\n\n' + (turns ? turns + '\n' : '') + 'کاربر: ' + q + '\nدستیار:';
+    try {
+      if (window.claude && window.claude.use) {
+        var smp = await window.claude.use('sample');
+        if (smp) { var out = await smp(full); if (out && out.text) return out.text; }
+      }
+    } catch (e) {}
+    var res = await fetch('https://text.pollinations.ai/' + encodeURIComponent(full) + '?model=openai');
+    if (!res.ok) throw new Error('http');
+    var txt = (await res.text()).trim(); if (!txt) throw new Error('empty'); return txt;
+  }
+  askForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var q = askIn.value.trim(); if (!q || busy) return;
+    askIn.value = ''; addMsg(q, 'me'); blip(560);
+    var loc = localAnswer(q);
+    if (loc) { addMsg(loc, 'ai'); hist.push({ r: 'u', t: q }, { r: 'a', t: loc }); return; }
+    busy = true; askBtn.disabled = true;
+    var w = addMsg('دارم فکر می‌کنم...', 'ai');
+    try { var a = await askAI(q); hist.push({ r: 'u', t: q }, { r: 'a', t: a }); w.textContent = a; }
+    catch (err) { w.textContent = 'الان نتونستم جواب بدم. اینترنتت رو چک کن (اگه لازمه VPN رو روشن کن) و دوباره امتحان کن.'; }
+    logEl.scrollTop = logEl.scrollHeight; busy = false; askBtn.disabled = false;
+  });
+
+  /* ---------- hand skeleton overlay ---------- */
+  var skel = document.getElementById('skel'), sctx = skel.getContext('2d'), SW = 0, SH = 0;
+  var SK = { halo: 'rgba(255,162,77,0.3)', glow: 'rgba(255,162,77,0.9)', blur: 14, bone: '#ffb066', joint: '#2a1304', pill: 'rgba(42,22,10,0.9)', text: '#ffe9d6' };
+  var BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  function sizeSkel() { var d = Math.min(window.devicePixelRatio || 1, 2); SW = window.innerWidth; SH = window.innerHeight; skel.width = SW * d; skel.height = SH * d; sctx.setTransform(d, 0, 0, d, 0, 0); }
+  window.addEventListener('resize', sizeSkel); sizeSkel();
+  function clearSkel() { sctx.clearRect(0, 0, SW, SH); }
+  function drawSkel(lm, ax, ay, label, pinch, ring) {
+    clearSkel();
+    var vw = cam.videoWidth || 640, vh = cam.videoHeight || 480, k = Math.min(SW, SH) * 0.9 / Math.min(vw, vh);
+    var pts = lm.map(function (q) { return { x: ax - (q.x - lm[8].x) * vw * k, y: ay + (q.y - lm[8].y) * vh * k }; });
+    sctx.lineCap = 'round'; sctx.lineJoin = 'round';
+    function bones() { sctx.beginPath(); BONES.forEach(function (b) { sctx.moveTo(pts[b[0]].x, pts[b[0]].y); sctx.lineTo(pts[b[1]].x, pts[b[1]].y); }); sctx.stroke(); }
+    sctx.shadowColor = SK.glow; sctx.shadowBlur = SK.blur;
+    sctx.strokeStyle = SK.halo; sctx.lineWidth = 8; bones();
+    sctx.shadowBlur = 0;
+    sctx.strokeStyle = SK.bone; sctx.lineWidth = 3; bones();
+    for (var i = 0; i < 21; i++) {
+      var tip = (i === 4 || i === 8 || i === 12 || i === 16 || i === 20), hot = pinch && (i === 4 || i === 8);
+      sctx.beginPath(); sctx.arc(pts[i].x, pts[i].y, hot ? 9 : tip ? 6 : 4, 0, 6.2832);
+      sctx.fillStyle = hot ? SK.bone : SK.joint; sctx.fill(); sctx.lineWidth = 2; sctx.strokeStyle = SK.bone; sctx.stroke();
+    }
+    if (ring) { sctx.beginPath(); sctx.setLineDash([6, 5]); sctx.arc(ax, ay, ring, 0, 6.2832); sctx.strokeStyle = SK.bone; sctx.lineWidth = 2; sctx.stroke(); sctx.setLineDash([]); }
+    if (label) {
+      sctx.font = '700 14px Vazirmatn, Tahoma, sans-serif'; sctx.direction = 'rtl'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+      var tw = sctx.measureText(label).width + 22, lx = pts[0].x, ly = Math.min(pts[0].y + 28, SH - 20);
+      lx = Math.max(tw / 2 + 4, Math.min(SW - tw / 2 - 4, lx));
+      sctx.fillStyle = SK.pill; sctx.strokeStyle = SK.bone; sctx.lineWidth = 1.5;
+      sctx.beginPath(); if (sctx.roundRect) sctx.roundRect(lx - tw / 2, ly - 13, tw, 26, 13); else sctx.rect(lx - tw / 2, ly - 13, tw, 26); sctx.fill(); sctx.stroke();
+      sctx.fillStyle = SK.text; sctx.fillText(label, lx, ly + 1);
+    }
+  }
+  var LABELS = { idle: 'نشانگر', grab: 'گرفتن', click: 'کلیک' };
+
+  /* ---------- hand control (camera + MediaPipe Hands) ---------- */
+  var handBtn = document.getElementById('handBtn'), cam = document.getElementById('cam'), cursor = document.getElementById('cursor');
+  var hands = null, stream = null, running = false, pinched = false, seen = false, hmode = 'idle', hot = null;
+  var cx = -100, cy = -100, gSize = 1, gScale = 1;
+  var MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/';
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = src; s.crossOrigin = 'anonymous'; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function curled(lm, tip, mcp) { return dist(lm[tip], lm[0]) < dist(lm[mcp], lm[0]) * 1.15; }
+  function setHot(el) { if (hot === el) return; if (hot) hot.classList.remove('hot'); hot = el; if (hot) hot.classList.add('hot'); }
+  function onHand(r) {
+    var lms = r.multiHandLandmarks;
+    if (!lms || !lms.length) {
+      cursor.classList.remove('on', 'pinch'); pinched = false; setHot(null); clearSkel();
+      if (hmode === 'grab') release();
+      if (hmode !== 'idle') { hmode = 'idle'; setStatus(HINT); }
+      return;
+    }
+    var lm = lms[0], W = window.innerWidth, H = window.innerHeight;
+    if (!seen) { seen = true; setStatus(HINT); }
+    var tx = (1 - clamp((lm[8].x - 0.12) / 0.76, 0, 1)) * W, ty = clamp((lm[8].y - 0.1) / 0.7, 0, 1) * H;
+    cx += (tx - cx) * 0.55; cy += (ty - cy) * 0.55;
+    cursor.style.left = cx + 'px'; cursor.style.top = cy + 'px'; cursor.classList.add('on');
+    var fist = curled(lm, 8, 5) && curled(lm, 12, 9) && curled(lm, 16, 13) && curled(lm, 20, 17);
+    var ratio = dist(lm[4], lm[8]) / (dist(lm[0], lm[9]) || 1);
+    var pinchNow = !fist && (pinched ? ratio < 0.45 : ratio < 0.3);
+    var size = dist(lm[0], lm[9]) || 0.1;
+    var el = document.elementFromPoint(cx, cy), pe = el && el.closest ? el.closest('.holo') : null;
+    if (hmode !== 'grab') setHot(pe);
+    if (pinchNow) {
+      if (!pinched) {
+        var ctl = el && el.closest ? el.closest('button, a, input, textarea') : null;
+        if (ctl) { if (ctl.tagName === 'INPUT' || ctl.tagName === 'TEXTAREA') ctl.focus(); else ctl.click(); hmode = 'click'; }
+        else if (pe) { var p = panelOf(pe); grab(p, cx, cy, 'hand'); gSize = size; gScale = p.s; hmode = 'grab'; setStatus('پنل رو گرفتی. حرکت بده.'); }
+        else hmode = 'click';
+      } else if (hmode === 'grab' && drag) {
+        moveDrag(cx, cy); drag.p.s = clamp(gScale * Math.pow(size / gSize, 1.8), 0.6, 1.8);
+      }
+    } else {
+      if (hmode === 'grab') { release(); setStatus(HINT); }
+      hmode = 'idle';
+    }
+    pinched = pinchNow; cursor.classList.toggle('pinch', pinchNow);
+    drawSkel(lm, cx, cy, LABELS[hmode] || 'نشانگر', pinchNow, 0);
+  }
+  function stopHand() {
+    running = false; seen = false; pinched = false; if (hmode === 'grab') release(); hmode = 'idle'; setHot(null);
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    cam.classList.remove('on'); cursor.classList.remove('on', 'pinch'); clearSkel(); handBtn.textContent = 'روشن کردن حرکات دست';
+  }
+  async function loop() {
+    if (!running) return;
+    if (cam.readyState >= 2 && hands) { try { await hands.send({ image: cam }); } catch (e) {} }
+    requestAnimationFrame(loop);
+  }
+  handBtn.addEventListener('click', async function () {
+    if (running) { stopHand(); setStatus('حرکات دست خاموش شد. هنوز با موس یا انگشت می‌تونی پنل‌ها رو بکشی.'); return; }
+    handBtn.disabled = true; setStatus('در حال روشن کردن دوربین...');
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nocam');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+    } catch (e) {
+      handBtn.disabled = false; setStatus('دسترسی به دوربین ممکن نشد. اجازه‌ی دوربین رو بده و دوباره امتحان کن. تا اون موقع با موس یا انگشت هم کار می‌کنه.'); return;
+    }
+    try {
+      cam.srcObject = stream; await cam.play(); cam.classList.add('on');
+      setStatus('در حال آماده‌سازی تشخیص دست، چند ثانیه صبر کن...');
+      if (!window.Hands) await loadScript(MP + 'hands.js');
+      hands = new window.Hands({ locateFile: function (f) { return MP + f; } });
+      hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+      hands.onResults(onHand);
+      running = true; handBtn.disabled = false; handBtn.textContent = 'خاموش کردن حرکات دست';
+      setStatus('آماده‌ست. دستت رو جلوی دوربین بگیر.'); loop();
+    } catch (e) {
+      stopHand(); handBtn.disabled = false; setStatus('تشخیص دست بالا نیومد. اینترنتت رو چک کن (اگه لازمه VPN رو روشن کن) و دوباره امتحان کن.');
+    }
+  });
+})();
+</script>
+</body>
+</html>

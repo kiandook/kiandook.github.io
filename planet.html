@@ -69,6 +69,8 @@
   #cursor.on { display: block; }
   #cursor.pinch { width: 24px; height: 24px; margin: -12px 0 0 -12px; background: var(--orange-deep); }
   #cursor.spin { border-style: dashed; }
+  #cursor, #cursor.on { display: none !important; }
+  #skel { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 22; }
   #cam { position: fixed; top: calc(64px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); width: 120px; height: 90px; object-fit: cover; border-radius: 12px; border: 2px solid var(--orange); transform: scaleX(-1); z-index: 15; background: #000; display: none; }
   #cam.on { display: block; }
 </style>
@@ -77,6 +79,7 @@
 
 <canvas id="stage" aria-label="سیاره‌ی سه‌بعدی"></canvas>
 <div id="cursor" aria-hidden="true"></div>
+<canvas id="skel" aria-hidden="true"></canvas>
 <video id="cam" playsinline muted aria-hidden="true"></video>
 
 <header class="top">
@@ -244,6 +247,40 @@
   document.getElementById('smaller').addEventListener('click', function () { zoomBy(1 / 1.2); });
   document.getElementById('reset').addEventListener('click', resetPose);
 
+  /* ---------- hand skeleton overlay ---------- */
+  var skel = document.getElementById('skel'), sctx = skel.getContext('2d'), SW = 0, SH = 0;
+  var SK = { halo: 'rgba(255,255,255,0.92)', glow: 'rgba(0,0,0,0)', blur: 0, bone: '#d9742a', joint: '#ffffff', pill: 'rgba(255,255,255,0.95)', text: '#33261d' };
+  var BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  function sizeSkel() { var d = Math.min(window.devicePixelRatio || 1, 2); SW = window.innerWidth; SH = window.innerHeight; skel.width = SW * d; skel.height = SH * d; sctx.setTransform(d, 0, 0, d, 0, 0); }
+  window.addEventListener('resize', sizeSkel); sizeSkel();
+  function clearSkel() { sctx.clearRect(0, 0, SW, SH); }
+  function drawSkel(lm, ax, ay, label, pinch, ring) {
+    clearSkel();
+    var vw = cam.videoWidth || 640, vh = cam.videoHeight || 480, k = Math.min(SW, SH) * 0.9 / Math.min(vw, vh);
+    var pts = lm.map(function (q) { return { x: ax - (q.x - lm[8].x) * vw * k, y: ay + (q.y - lm[8].y) * vh * k }; });
+    sctx.lineCap = 'round'; sctx.lineJoin = 'round';
+    function bones() { sctx.beginPath(); BONES.forEach(function (b) { sctx.moveTo(pts[b[0]].x, pts[b[0]].y); sctx.lineTo(pts[b[1]].x, pts[b[1]].y); }); sctx.stroke(); }
+    sctx.shadowColor = SK.glow; sctx.shadowBlur = SK.blur;
+    sctx.strokeStyle = SK.halo; sctx.lineWidth = 8; bones();
+    sctx.shadowBlur = 0;
+    sctx.strokeStyle = SK.bone; sctx.lineWidth = 3; bones();
+    for (var i = 0; i < 21; i++) {
+      var tip = (i === 4 || i === 8 || i === 12 || i === 16 || i === 20), hot = pinch && (i === 4 || i === 8);
+      sctx.beginPath(); sctx.arc(pts[i].x, pts[i].y, hot ? 9 : tip ? 6 : 4, 0, 6.2832);
+      sctx.fillStyle = hot ? SK.bone : SK.joint; sctx.fill(); sctx.lineWidth = 2; sctx.strokeStyle = SK.bone; sctx.stroke();
+    }
+    if (ring) { sctx.beginPath(); sctx.setLineDash([6, 5]); sctx.arc(ax, ay, ring, 0, 6.2832); sctx.strokeStyle = SK.bone; sctx.lineWidth = 2; sctx.stroke(); sctx.setLineDash([]); }
+    if (label) {
+      sctx.font = '700 14px Vazirmatn, Tahoma, sans-serif'; sctx.direction = 'rtl'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+      var tw = sctx.measureText(label).width + 22, lx = pts[0].x, ly = Math.min(pts[0].y + 28, SH - 20);
+      lx = Math.max(tw / 2 + 4, Math.min(SW - tw / 2 - 4, lx));
+      sctx.fillStyle = SK.pill; sctx.strokeStyle = SK.bone; sctx.lineWidth = 1.5;
+      sctx.beginPath(); if (sctx.roundRect) sctx.roundRect(lx - tw / 2, ly - 13, tw, 26, 13); else sctx.rect(lx - tw / 2, ly - 13, tw, 26); sctx.fill(); sctx.stroke();
+      sctx.fillStyle = SK.text; sctx.fillText(label, lx, ly + 1);
+    }
+  }
+  var LABELS = { idle: 'نشانگر', grab: 'گرفتن', spin: 'چرخوندن', click: 'کلیک' };
+
   /* ---------- hand control (camera + MediaPipe Hands) ---------- */
   var handBtn = document.getElementById('handBtn'), cam = document.getElementById('cam'), cursor = document.getElementById('cursor');
   var hands = null, stream = null, running = false, pinched = false, seen = false, mode = 'idle';
@@ -261,7 +298,7 @@
   function onHand(r) {
     var lms = r.multiHandLandmarks;
     if (!lms || !lms.length) {
-      cursor.classList.remove('on', 'pinch', 'spin'); pinched = false;
+      cursor.classList.remove('on', 'pinch', 'spin'); pinched = false; clearSkel();
       if (mode !== 'idle') { mode = 'idle'; setStatus(HINT); }
       return;
     }
@@ -292,11 +329,12 @@
     pinched = pinchNow;
     cursor.classList.toggle('pinch', pinchNow);
     cursor.classList.toggle('spin', mode === 'spin');
+    drawSkel(lm, cx, cy, LABELS[mode] || 'نشانگر', pinchNow, 0);
   }
   function stopHand() {
     running = false; seen = false; pinched = false; mode = 'idle';
     if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-    cam.classList.remove('on'); cursor.classList.remove('on', 'pinch', 'spin');
+    cam.classList.remove('on'); cursor.classList.remove('on', 'pinch', 'spin'); clearSkel();
     handBtn.textContent = 'روشن کردن حرکات دست';
   }
   async function loop() {
